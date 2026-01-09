@@ -27,8 +27,18 @@ const Generator: React.FC<GeneratorProps> = ({ onPromptGenerated }) => {
     e.preventDefault();
     setLoading(true);
 
+    const apiKey = process.env.API_KEY;
+    const fallbackPrompt = `Foto profissional de ${formData.productType}, estilo ${formData.style}, cenário ${formData.scenario}, em tons de ${formData.colors}, tipo ${formData.photoType}, clima ${formData.mood}. Imagem comercial de alta qualidade, 8k, foco nítido.`;
+
+    if (!apiKey) {
+      console.warn("API_KEY não encontrada. Usando gerador estático.");
+      onPromptGenerated(fallbackPrompt);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey });
       const promptText = `
         Aja como um especialista em fotografia publicitária de produtos.
         Crie um prompt detalhado para uma IA geradora de imagens baseado nestas informações:
@@ -39,7 +49,7 @@ const Generator: React.FC<GeneratorProps> = ({ onPromptGenerated }) => {
         - Tipo de Foto: ${formData.photoType}
         - Clima: ${formData.mood}
         
-        O prompt deve ser profissional, em português, focado em alta qualidade, realismo e estética para e-commerce.
+        O prompt deve ser profissional, em português, focado em alta qualidade e realismo comercial.
         Retorne APENAS o texto do prompt final.
       `;
 
@@ -48,9 +58,10 @@ const Generator: React.FC<GeneratorProps> = ({ onPromptGenerated }) => {
         contents: promptText
       });
 
-      onPromptGenerated(response.text || "Prompt indisponível momentaneamente.");
+      onPromptGenerated(response.text || fallbackPrompt);
     } catch (error) {
-      onPromptGenerated(`Foto profissional de ${formData.productType}, posicionado no centro, fundo ${formData.scenario}, cores ${formData.colors}, estilo ${formData.style}, 8k, ultra realista.`);
+      console.error("Erro na API Gemini:", error);
+      onPromptGenerated(fallbackPrompt);
     } finally {
       setLoading(false);
     }
@@ -118,7 +129,15 @@ const Generator: React.FC<GeneratorProps> = ({ onPromptGenerated }) => {
             type="submit"
             className="w-full bg-rose-600 hover:bg-black text-white font-black py-5 rounded-2xl shadow-xl shadow-rose-200 hover:shadow-gray-200 transition-all duration-500 flex items-center justify-center gap-3 uppercase tracking-widest disabled:opacity-70"
           >
-            {loading ? 'Processando Inteligência...' : 'Gerar Prompt Agora'}
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Criando Magia...
+              </span>
+            ) : 'Gerar Prompt Agora'}
           </button>
         </div>
       </form>
